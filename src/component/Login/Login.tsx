@@ -1,34 +1,40 @@
-import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useLoginContext } from "../../context/LoginContext";
+import axios, { type AxiosResponse } from "axios";
+import { useForm } from "react-hook-form";
+
+type LoginData = {
+  email: string;
+  password: string;
+};
 
 export default function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginData>();
   const { setIsLogin } = useLoginContext();
   const navigate = useNavigate();
 
-  function handleEmailChange(event: React.ChangeEvent<HTMLInputElement>) {
-    setEmail(event.target.value);
-  }
-
-  function handlePasswordChange(event: React.ChangeEvent<HTMLInputElement>) {
-    setPassword(event.target.value);
-  }
-
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    console.log("Email:", email);
-    console.log("Password:", password);
-    localStorage.setItem("token", "xxx-xxx-xxx-xxx");
-    setIsLogin(true);
-    return navigate("/");
-  }
+  const onSubmit = async (
+    data: LoginData
+  ): Promise<AxiosResponse<any, any> | unknown> => {
+    try {
+      const response = await axios.post(`api/auth/login`, data);
+      console.log(response.data);
+      localStorage.setItem("token", response.data.data.token);
+      setIsLogin(true);
+      navigate("/");
+    } catch (error) {
+      console.log(error);
+      return error;
+    }
+  };
   return (
     <>
       <form
-        onSubmit={handleSubmit}
+        onSubmit={handleSubmit(onSubmit)}
         className="max-w-md mx-auto bg-white p-6 rounded-md mt-30"
         style={{ boxShadow: "0 6px 10px rgba(0, 0, 0, 0.4)" }}
       >
@@ -45,12 +51,20 @@ export default function Login() {
           <input
             id="login-email"
             type="email"
-            name="login-email"
             placeholder="Email"
+            {...register("email", {
+              required: "Email is required.",
+              pattern: {
+                value: /^\S+@\S+$/i,
+                message: "Invalid email address",
+              },
+            })}
             className="border p-2 mb-4 w-full rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
             style={{ borderColor: "#00000055" }}
-            onChange={handleEmailChange}
           />
+          {errors.email && (
+            <p className="text-red-500">{errors.email.message}</p>
+          )}
           <label
             className="text-sm text-gray-600 mb-2"
             htmlFor="login-password"
@@ -60,12 +74,14 @@ export default function Login() {
           <input
             id="login-password"
             type="password"
-            name="login-password"
+            {...register("password", { required: "Password is required." })}
             placeholder="Password"
             className="border-1 p-2 mb-4 w-full rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
             style={{ borderColor: "#00000055" }}
-            onChange={handlePasswordChange}
-          />
+          />{" "}
+          {errors.password && (
+            <p className="text-red-500">{errors.password.message}</p>
+          )}
         </div>
         <button
           type="submit"
